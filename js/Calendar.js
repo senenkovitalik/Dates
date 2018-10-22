@@ -1,23 +1,8 @@
 function Calendar(now) {
   this.now = new Date(now);
 
-  this.currentMonth = {
-    month:  now.getUTCMonth(),
-    days:   days[now.getUTCMonth()],
-    weeks:  computeWeeks(now)
-  };
-
-  this.currentWeek = null;  // 0, 1, 2, ...
-
-  const nextMonth = new Date();
-  nextMonth.setMonth(this.currentMonth.month + 1);
-  nextMonth.setDate(1);
-
-  this.nextMonth = {
-    month:  now.getUTCMonth() + 1,
-    days:   days[now.getUTCMonth() + 1],
-    weeks:  computeWeeks(nextMonth)
-  };
+  this.monthes = computeMonthes(now);
+  this.currentMonth = 0;
 
   this.today        = null;
   this.tomorrow     = null;
@@ -52,26 +37,22 @@ Calendar.prototype.getTomorrow = function() {
 
   this.tomorrow.setStartEndTime();
 
+  // tomorrow may be at new month 
+  this.computeCurrentMonth(this.tomorrow.start);
+  this.computeCurrentWeek(this.tomorrow.start);
+
   return this.tomorrow;
 }
 
 Calendar.prototype.getEndOfWeek = function() {
   this.end_of_week = new Period(END_OF_WEEK, this.now);
 
-  // find current week
-  for (let i in this.currentMonth.weeks) {
-    const currentWeek = this.currentMonth.weeks[i];
-    const tomorrow = this.tomorrow.start.getDate();
-
-    if (tomorrow >= currentWeek.start && tomorrow <= currentWeek.end) {
-      // i is a current week
-      this.currentWeek = Object.assign({}, { index: i }, this.currentMonth.weeks[i]);
-      break;
-    }
-  }
+  const month = this.monthes[this.currentMonth]; 
+  const week = month.week;
+  const currentWeek = month.weeks[week];
 
   // Are tomorrow end of week?
-  if (this.tomorrow.start.getDate() === this.currentWeek.end) {
+  if (this.tomorrow.start.getDate() === currentWeek.end) {
     // end of week
     this.end_of_week.start = null;
     this.end_of_week.end = null;
@@ -79,7 +60,7 @@ Calendar.prototype.getEndOfWeek = function() {
     // not end of week
     const nextDay = this.tomorrow.start.getDate() + 1;
     this.end_of_week.start.setDate(nextDay);
-    this.end_of_week.end.setDate(this.currentWeek.end);
+    this.end_of_week.end.setDate(currentWeek.end);
     this.end_of_week.setStartEndTime();
   }
 
@@ -89,12 +70,17 @@ Calendar.prototype.getEndOfWeek = function() {
 Calendar.prototype.getNextWeek = function() {
   this.next_week = new Period(NEXT_WEEK, this.now);
   
-  const prop = parseInt(this.currentWeek.index) + 1;
+  // Need to do something with it
+  const month = this.monthes[this.currentMonth]; 
+  const week = month.week;
+  const currentWeek = month.weeks[week];
 
-  if (this.currentMonth.weeks[prop]) {
+  const prop = parseInt(week) + 1;
+
+  if (month.weeks[prop]) {
     // we have next week!!!
-    this.next_week.start.setDate(this.currentMonth.weeks[prop].start);
-    this.next_week.end.setDate(this.currentMonth.weeks[prop].end);
+    this.next_week.start.setDate(month.weeks[prop].start);
+    this.next_week.end.setDate(month.weeks[prop].end);
     this.next_week.setStartEndTime();
   } else {
     this.next_week.start = null;
@@ -107,15 +93,20 @@ Calendar.prototype.getNextWeek = function() {
 Calendar.prototype.getEndOfMonth = function() {
   this.end_of_month = new Period(END_OF_MONTH, this.now);
 
-  let i = parseInt(this.currentWeek.index) + 2;
+  // Need to do something with it
+  const month = this.monthes[this.currentMonth]; 
+  const week = month.week;
+  const currentWeek = month.weeks[week];
+
+  let i = parseInt(week) + 2;
   let first = null;
   let last = null;
 
-  while(this.currentMonth.weeks[i]) {
+  while(month.weeks[i]) {
     if (!first) {
-      first = this.currentMonth.weeks[i];
+      first = month.weeks[i];
     }
-    last = this.currentMonth.weeks[i];
+    last = month.weeks[i];
     i++;
   }
 
@@ -134,13 +125,41 @@ Calendar.prototype.getEndOfMonth = function() {
 Calendar.prototype.getNextMonth = function() {
   this.next_month = new Period(NEXT_MONTH, this.now);
 
-  this.next_month.start.setMonth(this.nextMonth.month);
+  const { month: nextMonthNumber, days } = this.monthes[parseInt(this.currentMonth) + 1];
+
+  console.log();
+
+  this.next_month.start.setMonth(nextMonthNumber);
   this.next_month.start.setDate(1);
 
-  this.next_month.end.setMonth(this.nextMonth.month);
-  this.next_month.end.setDate(this.nextMonth.days);
+  this.next_month.end.setMonth(nextMonthNumber);
+  this.next_month.end.setDate(days);
 
   this.next_month.setStartEndTime();
 
   return this.next_month;
+}
+
+Calendar.prototype.computeCurrentWeek = function(date) {
+  const d = new Date(date);
+
+  const weeks = this.monthes[this.currentMonth].weeks;
+
+  for(let i in weeks) {
+    if (d.getDate() >= weeks[i].start && d.getDate() <= weeks[i].end) {
+      Object.assign(this.monthes[this.currentMonth], {
+        week: i 
+      });
+    }
+  }
+}
+
+Calendar.prototype.computeCurrentMonth = function(date) {
+  const month = date.getMonth();
+  
+  for(let i in this.monthes) {
+    if (this.monthes[i].month === month) {
+      this.currentMonth = i;
+    }
+  }
 }
