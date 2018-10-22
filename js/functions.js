@@ -22,6 +22,7 @@ function computeWeeks(now) {
     const date = n.getUTCDate();
     const month = n.getUTCMonth();
     const day = n.getUTCDay();
+    const currentWeek = null;
 
     if (date < days[month]) {
       let delta = 6 - convert(day);
@@ -41,4 +42,29 @@ function computeWeeks(now) {
   }
 
   return weeks;
+}
+
+function computeMonthes(date) {
+
+  const d = new Date(date);
+  const monthes = {};
+
+  for(let i = 0; i <= 2; i++) {
+    const month = d.getMonth();
+    const dys = days[month];
+    const weeks = computeWeeks(d);
+
+    Object.assign(monthes, {
+      [i]: {
+        month,
+        days: dys,
+        weeks
+      }
+    });
+
+    d.setDate(1);
+    d.setMonth(month + 1);
+  }
+
+  return monthes;
 }
